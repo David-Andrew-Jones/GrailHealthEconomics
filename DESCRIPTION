@@ -11,3 +11,5 @@ Encoding: UTF-8
 LazyData: true
 Imports: Rcpp (>= 1.0.10)
 LinkingTo: Rcpp
+URL: https://github.com/David-Andrew-Jones/GrailHealthEconomics
+BugReports: https://github.com/David-Andrew-Jones/GrailHealthEconomics/issues
