@@ -9,6 +9,14 @@ Description: More about what it does (maybe more than one line)
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
+Depends:
+    dplyr,
+    tidyr,
+    ggplot2,
+    plotly,
+    ggpubr,
+    ggExtra,
+    R (>= 2.10)
 Imports: Rcpp (>= 1.0.10)
 LinkingTo: Rcpp
 URL: https://github.com/David-Andrew-Jones/GrailHealthEconomics

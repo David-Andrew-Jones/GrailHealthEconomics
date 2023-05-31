@@ -1,0 +1,1153 @@
+---
+title: "Trends in cancer incidence, mortality and survival"
+output: 
+ html_document:
+   theme: cosmo # default, cerulean, journal, flatly, darkly, readable, spacelab, united, cosmo, lumen, paper, sandstone, simplex, and yeti
+   highlight: tango # default, tango, pygments, kate, monochrome, espresso, zenburn, haddock, breezedark, and textmate
+   
+---
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE) 
+```
+
+
+```{r}
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(ggpubr)
+library(kableExtra)
+
+load("~/GRAIL_HE/data/data_inc_2001to2020_C0toC97_allageandbysex.rda")
+load("~/GRAIL_HE/data/data_mort_2001to2020_C0toC97_allageandbysex.rda")
+
+load("~/GRAIL_HE/data/data_inc_2001to2020_C0toC97_allandbyagesex.rda")
+load("~/GRAIL_HE/data/data_mort_2001to2020_C0toC97_allandbyagesex.rda")
+
+load("~/GRAIL_HE/data/data_inc_2001to2020_bysite_allandbysex.rda")
+load("~/GRAIL_HE/data/data_mort_2001to2020_bysite_allandbysex.rda")
+
+load("~/GRAIL_HE/data/data_surv_2001to2019_bysite.rda")
+
+
+```
+
+<br>
+
+## Data
+
+Cancerdata.nhs (produced by NCRAS) provides the most up to date data on English cancer incidence, mortality, and survival. Data on incidence and mortality  can be found in this [dashboard](https://www.cancerdata.nhs.uk/incidence_and_mortality), with data spanning patients diagnosed between 2001 and 2020. Incidence and mortality data is given by year, cancer site, sex and age plus options for geographic and deprivation stratification. Net survival data is provided in a separate [dashboard](https://www.cancerdata.nhs.uk/survival/cancersurvivalengland) which also provides survival data by years of diagnosis ranging from 2006 to 2019, cancer site (only 13), sex and age plus options for geographic and deprivation stratification. The net survival data provided is derived as stated: "The ‘complete approach’ to estimating survival is applied, including all patients diagnosed between 2015 to 2019. Survival is estimated using the Pohar-Perme estimator, which provides unbiased estimates of net survival at all ages. Survival is estimated using the publicly available stns algorithm  in STATA 16 software."
+
+## Summary of points of interest
+
+Age-standardized incidence rates for all cancers combined rose steeply between 2001 to 2013 and then plateaued before a sharp COVID-related drop in 2020. Mortality for all cancers combined consistently declined year on year over the 2001 to 2020 time period, driven by patients diagnosed between 45 and 79 years of age.
+
+Stratifying by cancer site, head and neck cancer (likely HPV+ related disease), small intestine, liver and and thyroid cancer, and follicular lymphoma all increased in incidence year on year throughout the period, whilst skin, kidney and gallbladder cancer had steep increases in incidence in the earlier diagnosis period. Stomach, rectosigmoid junction, bladder and larynx cancer exhibit sustained decreases over the 2001 to 2019 period.   
+
+As for mortality ASR, liver and gallbladder cancer had large increases, likely related to their increase in incidence in conjunction with little improvement in survival - although survival data was not available for these two sites. Interestingly, despite a declining incidence of rectosigmoid junction cancer from 2005 onwards, mortality rose sharply (again no survival data, potentially related to classification). Mortality from stomach and bladder cancer decreased inline with decrease in incidence. For stomach cancer, 1- and 5-year net survival increased substantially, especially for females. Whereas for bladder cancer, net survival trended down, likely reflected the well documented global shortage in bacillus Calmette-Guerin (BCG). Mortality also decrease for colon cancer, despite incidence and 1- and 5-year survival being flat.
+
+Net survival for oesophageal cancer improved over the observed period, which is the likely reason for the declining mortality rate given the flat incidence trend. This same incidence/mortality/survival pattern is also apparent for lung cancer. Both 1- and 5-year net survival also improved greatly for myeloma, and this aligns with it's increasing incidence and flat mortality profile.  
+
+Below, various graphs and tabulations based on the extracted data is presented.
+
+
+<br>
+
+##  Incidence
+
+The yearly age-standardised incidence rate for all cancers combined demonstrate a prolonged increase between 2001 and 2013 before plateauing. The shape of the profiles are the same for both sexes  
+
+#### *Age-standardised incidence rates from 2001 to 2020 for all cancer sites (C0 to C97) combined, stratified by sex*
+
+
+```{r}
+
+temp_inc <- data_inc_2001to2020_C0toC97_allageandbysex %>%
+        filter(Type_of_rate == "Age-standardised") %>%
+        pivot_wider(names_from = Gender, values_from = c(Count, Rate, LCI, UCI))
+
+ggplotly(ggplot(temp_inc, aes(x=Year)) + 
+  geom_line(aes(y = Rate_Persons), color = "darkred") + 
+  geom_line(aes(y = LCI_Persons), color="red", linetype="twodash") +
+  geom_line(aes(y = UCI_Persons), color="red", linetype="twodash") +
+  geom_line(aes(y = Rate_Male), color = "blue") + 
+  geom_line(aes(y = LCI_Male), color="steelblue", linetype="twodash") +
+  geom_line(aes(y = UCI_Male), color="steelblue", linetype="twodash") +
+  geom_line(aes(y = Rate_Female), color = "green") + 
+  geom_line(aes(y = LCI_Female), color="darkgreen", linetype="twodash") +
+  geom_line(aes(y = UCI_Female), color="darkgreen", linetype="twodash") +
+  theme_bw() +
+  theme(strip.text = element_text(size = 12)) +
+  xlab("Year") +
+  ylab("ASR per 100,000") +
+  theme(strip.background =element_rect(fill="white")),
+  height = 800, width=800) 
+
+```
+
+<br>
+
+A break down by sex and 5-year age group is provided below with the X axis showing the % change in ASR from the preceding year. The profiles suggest there is no one particular age group responsible for the overall profile   
+
+####  *Annual percentage change in incidence from 2001 to 2020 for all cancer sites (C0 to C97) combined, by age*
+
+#### **Females** Select age group {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_inc <- data_inc_2001to2020_C0toC97_allandbyagesex %>% 
+        group_by(Gender, Age_at_Diagnosis) %>%
+        arrange(Year, .by_group = TRUE) %>%
+        mutate(pct_change = (Rate/lag(Rate) - 1) * 100) %>%
+        filter(Age_at_Diagnosis != "All ages") %>%
+        filter(grepl(c("Female"), Gender))
+
+
+names_plotageinc_list <- levels(factor(temp_inc$Age_at_Diagnosis))
+        
+l_temp_inc <- temp_inc %>% group_split(ICD10_descrip)
+
+plots <- map(l_temp_inc, ~ ggplotly(ggbarplot(.x, y = "pct_change", x = "Year") +
+  theme_bw() +
+  theme(strip.text = element_text(size = 12)) +
+  xlab("Year") +
+  ylab("Annual percentage change") +
+  theme(strip.background =element_rect(fill="white")) +
+  theme(legend.position ="bottom") +
+          facet_wrap(vars(Age_at_Diagnosis), ncol = 3),
+  height = 300, width=800))
+
+names(plots) = names_plotageinc_list
+
+
+```
+
+
+##### 20 to 24
+```{r, echo = FALSE}
+plots[[1]]
+```
+
+##### 25 to 29
+```{r, echo = FALSE}
+plots[[2]]
+```
+
+##### 30 to 34
+```{r, echo = FALSE}
+plots[[3]]
+```
+
+##### 35 to 39
+```{r, echo = FALSE}
+plots[[4]]
+```
+
+##### 40 to 44
+```{r, echo = FALSE}
+plots[[5]]
+```
+
+##### 45 to 49
+```{r, echo = FALSE}
+plots[[6]]
+```
+
+##### 50 to 54
+```{r, echo = FALSE}
+plots[[7]]
+```
+
+##### 55 to 59
+```{r, echo = FALSE}
+plots[[8]]
+```
+
+##### 60 to 64
+```{r, echo = FALSE}
+plots[[9]]
+```
+
+##### 65 to 69
+```{r, echo = FALSE}
+plots[[10]]
+```
+
+##### 70 to 74
+```{r, echo = FALSE}
+plots[[11]]
+```
+
+##### 75 to 79
+```{r, echo = FALSE}
+plots[[12]]
+```
+
+##### 80 to 84
+```{r, echo = FALSE}
+plots[[13]]
+```
+
+##### 85 to 89
+```{r, echo = FALSE}
+plots[[14]]
+```
+
+##### 90 and over
+```{r, echo = FALSE}
+plots[[15]]
+```
+
+#### **Males** Select age group {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_inc <- data_inc_2001to2020_C0toC97_allandbyagesex %>% 
+        group_by(Gender, Age_at_Diagnosis) %>%
+        arrange(Year, .by_group = TRUE) %>%
+        mutate(pct_change = (Rate/lag(Rate) - 1) * 100) %>%
+        filter(Age_at_Diagnosis != "All ages") %>%
+        filter(grepl(c("Male"), Gender))
+
+
+names_plotageinc_list <- levels(factor(temp_inc$Age_at_Diagnosis))
+        
+l_temp_inc <- temp_inc %>% group_split(ICD10_descrip)
+
+plots <- map(l_temp_inc, ~ ggplotly(ggbarplot(.x, y = "pct_change", x = "Year") +
+  theme_bw() +
+  theme(strip.text = element_text(size = 12)) +
+  xlab("Year") +
+  ylab("Annual percentage change") +
+  theme(strip.background =element_rect(fill="white")) +
+  theme(legend.position ="bottom") +
+          facet_wrap(vars(Age_at_Diagnosis), ncol = 3),
+  height = 300, width=800))
+
+names(plots) = names_plotageinc_list
+
+
+```
+
+
+##### 20 to 24
+```{r, echo = FALSE}
+plots[[1]]
+```
+
+##### 25 to 29
+```{r, echo = FALSE}
+plots[[2]]
+```
+
+##### 30 to 34
+```{r, echo = FALSE}
+plots[[3]]
+```
+
+##### 35 to 39
+```{r, echo = FALSE}
+plots[[4]]
+```
+
+##### 40 to 44
+```{r, echo = FALSE}
+plots[[5]]
+```
+
+##### 45 to 49
+```{r, echo = FALSE}
+plots[[6]]
+```
+
+##### 50 to 54
+```{r, echo = FALSE}
+plots[[7]]
+```
+
+##### 55 to 59
+```{r, echo = FALSE}
+plots[[8]]
+```
+
+##### 60 to 64
+```{r, echo = FALSE}
+plots[[9]]
+```
+
+##### 65 to 69
+```{r, echo = FALSE}
+plots[[10]]
+```
+
+##### 70 to 74
+```{r, echo = FALSE}
+plots[[11]]
+```
+
+##### 75 to 79
+```{r, echo = FALSE}
+plots[[12]]
+```
+
+##### 80 to 84
+```{r, echo = FALSE}
+plots[[13]]
+```
+
+##### 85 to 89
+```{r, echo = FALSE}
+plots[[14]]
+```
+
+##### 90 and over
+```{r, echo = FALSE}
+plots[[15]]
+```
+
+
+<br>
+
+####  *Trends in incidence from 2001 to 2020 by select cancer sites*
+
+Site specific trends are given below. Graphs of trends for select site (based on high ASR) are provided, as well as a complete table showing the % change in ASR between 2001 and 2019, 2009 and 2019, and 2014 to 2019. This table is ordered by 2014 to 2019 change. 
+
+Of note, head and neck cancer shows a sustained increase in incidence between 2001 and 2019, almost certainly driven by well documented increase in HPV+ related disease. Small intestine, liver and and thyroid cancer also show this trend, as does follicular lymphoma. Neoplasms of the skin had sharp increases in incidence in the earlier diagnosis period as did kidney and gallbladder cancer. Stomach, rectosigmoid junction, bladder and larynx cancer exhibit sustained decreases over the 2001 to 2019 period.   
+
+#### Select Site (ICD 10) {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_inc <- data_inc_2001to2020_bysite_allandbysex %>% 
+        filter(Type_of_rate == "Age-standardised") %>%
+        select(Year, Gender,Age_at_Diagnosis, ICD10_code, Site_description, Rate) %>%
+        pivot_wider(names_from = Gender, values_from = c(Rate)) %>%
+        filter(grepl(c("C"), ICD10_code)) %>% 
+        unite(ICD10_descrip, ICD10_code , Site_description, sep = " ", remove = TRUE)
+
+names_plot_list <- levels(factor(temp_inc$ICD10_descrip))
+
+l_temp_inc <- temp_inc %>% group_split(ICD10_descrip)
+names(l_temp_inc) = names_plot_list
+
+plots <- map(l_temp_inc, ~ ggplotly(ggplot(.x, aes(x=Year)) + 
+                     geom_line(aes(y = Persons), color = "darkred") + 
+                     geom_line(aes(y = Male), color = "blue") + 
+                     geom_line(aes(y = Female), color = "green") + 
+                     theme_bw() +
+                     theme(strip.text = element_text(size = 12)) +
+                     xlab("Year") +
+                     ylab("ASR per 100,000") +
+                     theme(strip.background =element_rect(fill="white")), height = 800, width=800))
+
+names(plots) = names_plot_list
+        
+```
+
+##### C00-C14 Malignant neoplasm of lip, oral cavity and pharynx
+```{r, echo = FALSE}
+plots[[2]]
+```
+
+##### C15 Malignant neoplasm of oesophagus
+```{r, echo = FALSE}
+plots[[17]]
+```
+
+##### C16 Malignant neoplasm of stomach
+```{r, echo = FALSE}
+plots[[18]]
+```
+
+##### C18 Malignant neoplasm of colon
+```{r, echo = FALSE}
+plots[[20]]
+```
+
+##### C19 Malignant neoplasm of rectosigmoid junction
+```{r, echo = FALSE}
+plots[[22]]
+```
+
+##### C20  Malignant neoplasm of rectum
+```{r, echo = FALSE}
+plots[[23]]
+```
+
+##### C22 Malignant neoplasm of liver and intrahepatic bile ducts
+```{r, echo = FALSE}
+plots[[25]]
+```
+
+##### C25 Malignant neoplasm of pancreas
+```{r, echo = FALSE}
+plots[[28]]
+```
+
+##### C33-C34 Malignant neoplasm of trachea, bronchus and lung
+```{r, echo = FALSE}
+plots[[34]]
+```
+
+##### C43 Malignant melanoma of skin
+```{r, echo = FALSE}
+plots[[41]]
+```
+
+##### C44 Other malignant neoplasms of skin
+```{r, echo = FALSE}
+plots[[42]]
+```
+
+##### C50 Malignant neoplasm of breast
+```{r, echo = FALSE}
+plots[[48]]
+```
+
+##### C54-C55 Malignant neoplasm of corpus uteri and uterus, part unspecified"
+```{r, echo = FALSE}
+plots[[53]]
+```
+
+##### C56-C57 Malignant neoplasm of ovary and other unspecified female genital organs"
+```{r, echo = FALSE}
+plots[[56]]
+```
+
+##### C61 Malignant neoplasm of prostate
+```{r, echo = FALSE}
+plots[[60]]
+```
+
+##### C62 Malignant neoplasm of testis
+```{r, echo = FALSE}
+plots[[61]]
+```
+
+##### C64 Malignant neoplasm of kidney, except renal pelvis
+```{r, echo = FALSE}
+plots[[63]]
+```
+
+##### C67 Malignant neoplasm of bladder
+```{r, echo = FALSE}
+plots[[66]]
+```
+
+##### C71 Malignant neoplasm of brain
+```{r, echo = FALSE}
+plots[[70]]
+```
+
+##### C80 Malignant neoplasm, without specification of site
+```{r, echo = FALSE}
+plots[[79]]
+```
+
+##### C81  Hodgkin lymphoma
+```{r, echo = FALSE}
+plots[[80]]
+```
+
+##### C82-C86 Non-Hodgkin lymphoma
+```{r, echo = FALSE}
+plots[[82]]
+```
+
+##### C90 Multiple myeloma and malignant plasma cell neoplasms
+```{r, echo = FALSE}
+plots[[88]]
+```
+
+##### C91-C95 Leukaemia
+```{r, echo = FALSE}
+plots[[90]]
+```
+
+<br>
+
+#### *Percentage Change in incidence from 2001 to 2020 by select cancer sites*
+```{r}
+
+kable(data_inc_2001to2020_bysite_allandbysex %>% 
+        filter(Type_of_rate == "Age-standardised") %>%
+        filter(Gender == "Persons") %>%
+        select(Year, Gender, Age_at_Diagnosis, ICD10_code, Site_description, Rate) %>%
+        pivot_wider(names_from = Year, values_from = c(Rate)) %>%
+        filter(grepl(c("C"), ICD10_code)) %>% 
+        unite(ICD10_descrip, ICD10_code , Site_description, sep = " ", remove = TRUE) %>%
+        mutate(Percentage_change_2014_to_2019 = round((`2019` - `2014`)/`2014` * 100)) %>%
+        mutate(Percentage_change_2009_to_2019 = round((`2019` - `2009`)/`2009` * 100)) %>%
+        mutate(Percentage_change_2001_to_2019 = round((`2019` - `2001`)/`2001` * 100)) %>%
+        arrange(desc(Percentage_change_2014_to_2019)) %>%
+        filter(`2019` > 1) %>%
+        #filter(!grepl(c("C79|C88|C93|C85|C66|C69|C34|C33|C02|C84|C83|C91|C92|C78"),ICD10_descrip )) %>%
+        select(ICD10_descrip, `2001`,`2009`,`2014`,`2019`, Percentage_change_2001_to_2019, Percentage_change_2009_to_2019, Percentage_change_2014_to_2019) %>%
+        rename( ICD10 = ICD10_descrip, `01-19` = Percentage_change_2001_to_2019, `09-19` = Percentage_change_2009_to_2019 ,
+                `14-19` = Percentage_change_2014_to_2019)) %>%
+       kableExtra:::add_header_above(c(" " = 1, "ASR" = 4, "% change" = 3)) %>%
+       kable_classic("hover", full_width = T) 
+
+```
+
+<br>
+
+##  Mortality
+
+Despite the increase in incidence, especially during the 2001 to 2013 period, mortality rates declined throughout the period
+
+#### *Age-standardised mortality rates from 2001 to 2020 for all cancer sites (C0 to C97) combined, stratified by sex*
+
+```{r}
+
+temp_mort <- data_mort_2001to2020_C0toC97_allageandbysex %>%
+        filter(Type_of_rate == "Age-standardised") %>%
+        pivot_wider(names_from = Gender, values_from = c(Count, Rate, LCI, UCI))
+
+ggplotly(ggplot(temp_mort, aes(x=Year)) + 
+  geom_line(aes(y = Rate_Persons), color = "darkred") + 
+  geom_line(aes(y = LCI_Persons), color="red", linetype="twodash") +
+  geom_line(aes(y = UCI_Persons), color="red", linetype="twodash") +
+  geom_line(aes(y = Rate_Male), color = "blue") + 
+  geom_line(aes(y = LCI_Male), color="steelblue", linetype="twodash") +
+  geom_line(aes(y = UCI_Male), color="steelblue", linetype="twodash") +
+  geom_line(aes(y = Rate_Female), color = "green") + 
+  geom_line(aes(y = LCI_Female), color="darkgreen", linetype="twodash") +
+  geom_line(aes(y = UCI_Female), color="darkgreen", linetype="twodash") +
+  theme_bw() +
+  theme(strip.text = element_text(size = 12)) +
+  xlab("Year") +
+  ylab("ASR per 100,000") +
+  theme(strip.background =element_rect(fill="white")),
+  height = 800, width=800) 
+
+```
+
+<br>
+
+Stratification by age shows a pattern of (relatively) stable decrease in mortality rate over for those aged between 45 and 79 at diagnosis for both sexes. In the 20 to 44 and 80 to over 90 ages groups, change is quite volatile from year to year.    
+
+####  *Annual percentage change in mortality from 2001 to 2020 for all cancer sites (C0 to C97) combined, by age*
+
+#### **Females** Select age group {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_mort <- data_mort_2001to2020_C0toC97_allandbyagesex %>% 
+        group_by(Gender, Age_at_Diagnosis) %>%
+        arrange(Year, .by_group = TRUE) %>%
+        mutate(pct_change = (Rate/lag(Rate) - 1) * 100) %>%
+        filter(Age_at_Diagnosis != "All ages") %>%
+        filter(grepl(c("Female"), Gender))
+
+
+names_plotagemort_list <- levels(factor(temp_mort$Age_at_Diagnosis))
+        
+l_temp_mort <- temp_mort %>% group_split(ICD10_descrip)
+
+plots <- map(l_temp_mort, ~ ggplotly(ggbarplot(.x, y = "pct_change", x = "Year") +
+  theme_bw() +
+  theme(strip.text = element_text(size = 12)) +
+  xlab("Year") +
+  ylab("Annual percentage change") +
+  theme(strip.background =element_rect(fill="white")) +
+  theme(legend.position ="bottom") +
+          facet_wrap(vars(Age_at_Diagnosis), ncol = 3),
+  height = 300, width=800))
+
+names(plots) = names_plotagemort_list
+
+
+```
+
+
+##### 20 to 24
+```{r, echo = FALSE}
+plots[[1]]
+```
+
+##### 25 to 29
+```{r, echo = FALSE}
+plots[[2]]
+```
+
+##### 30 to 34
+```{r, echo = FALSE}
+plots[[3]]
+```
+
+##### 35 to 39
+```{r, echo = FALSE}
+plots[[4]]
+```
+
+##### 40 to 44
+```{r, echo = FALSE}
+plots[[5]]
+```
+
+##### 45 to 49
+```{r, echo = FALSE}
+plots[[6]]
+```
+
+##### 50 to 54
+```{r, echo = FALSE}
+plots[[7]]
+```
+
+##### 55 to 59
+```{r, echo = FALSE}
+plots[[8]]
+```
+
+##### 60 to 64
+```{r, echo = FALSE}
+plots[[9]]
+```
+
+##### 65 to 69
+```{r, echo = FALSE}
+plots[[10]]
+```
+
+##### 70 to 74
+```{r, echo = FALSE}
+plots[[11]]
+```
+
+##### 75 to 79
+```{r, echo = FALSE}
+plots[[12]]
+```
+
+##### 80 to 84
+```{r, echo = FALSE}
+plots[[13]]
+```
+
+##### 85 to 89
+```{r, echo = FALSE}
+plots[[14]]
+```
+
+##### 90 and over
+```{r, echo = FALSE}
+plots[[15]]
+```
+
+#### **Males** Select age group {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_inc <- data_mort_2001to2020_C0toC97_allandbyagesex %>% 
+        group_by(Gender, Age_at_Diagnosis) %>%
+        arrange(Year, .by_group = TRUE) %>%
+        mutate(pct_change = (Rate/lag(Rate) - 1) * 100) %>%
+        filter(Age_at_Diagnosis != "All ages") %>%
+        filter(grepl(c("Male"), Gender))
+
+
+names_plotagemort_list <- levels(factor(temp_mort$Age_at_Diagnosis))
+        
+l_temp_mort <- temp_mort %>% group_split(ICD10_descrip)
+
+plots <- map(l_temp_mort, ~ ggplotly(ggbarplot(.x, y = "pct_change", x = "Year") +
+  theme_bw() +
+  theme(strip.text = element_text(size = 12)) +
+  xlab("Year") +
+  ylab("Annual percentage change") +
+  theme(strip.background =element_rect(fill="white")) +
+  theme(legend.position ="bottom") +
+          facet_wrap(vars(Age_at_Diagnosis), ncol = 3),
+  height = 300, width=800))
+
+names(plots) = names_plotagemort_list
+
+
+```
+
+
+##### 20 to 24
+```{r, echo = FALSE}
+plots[[1]]
+```
+
+##### 25 to 29
+```{r, echo = FALSE}
+plots[[2]]
+```
+
+##### 30 to 34
+```{r, echo = FALSE}
+plots[[3]]
+```
+
+##### 35 to 39
+```{r, echo = FALSE}
+plots[[4]]
+```
+
+##### 40 to 44
+```{r, echo = FALSE}
+plots[[5]]
+```
+
+##### 45 to 49
+```{r, echo = FALSE}
+plots[[6]]
+```
+
+##### 50 to 54
+```{r, echo = FALSE}
+plots[[7]]
+```
+
+##### 55 to 59
+```{r, echo = FALSE}
+plots[[8]]
+```
+
+##### 60 to 64
+```{r, echo = FALSE}
+plots[[9]]
+```
+
+##### 65 to 69
+```{r, echo = FALSE}
+plots[[10]]
+```
+
+##### 70 to 74
+```{r, echo = FALSE}
+plots[[11]]
+```
+
+##### 75 to 79
+```{r, echo = FALSE}
+plots[[12]]
+```
+
+##### 80 to 84
+```{r, echo = FALSE}
+plots[[13]]
+```
+
+##### 85 to 89
+```{r, echo = FALSE}
+plots[[14]]
+```
+
+##### 90 and over
+```{r, echo = FALSE}
+plots[[15]]
+```
+
+<br>
+
+####  *Trends in mortality from 2001 to 2020 by select cancer sites*
+
+As with incidence, site specific mortality trends are given below. 
+
+Of note, liver and gallbladder cancer had large increases in mortality rate, likely related to their increase in incidence (assumed in conjunction with little improvement in survival). Interestingly, despite a declining incidence of rectosigmoid junction cancer, mortality rose sharply. Mortality from stomach and bladder cancer decreased inline with decrease in incidence. Mortality also decrease for colon cancer, despite incidence being flat.   
+
+#### Select Site (ICD 10) {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_mort <- data_mort_2001to2020_bysite_allandbysex %>% 
+        filter(Type_of_rate == "Age-standardised") %>%
+        select(Year, Gender,Age_at_Diagnosis, ICD10_code, Site_description, Rate) %>%
+        pivot_wider(names_from = Gender, values_from = c(Rate)) %>%
+        filter(grepl(c("C"), ICD10_code)) %>% 
+        unite(ICD10_descrip, ICD10_code , Site_description, sep = " ", remove = TRUE)
+
+names_plot_list <- levels(factor(temp_mort$ICD10_descrip))
+
+l_temp_mort <- temp_mort %>% group_split(ICD10_descrip)
+
+plots <- map(l_temp_mort, ~ ggplotly(ggplot(.x, aes(x=Year)) + 
+                     geom_line(aes(y = Persons), color = "darkred") + 
+                     geom_line(aes(y = Male), color = "blue") + 
+                     geom_line(aes(y = Female), color = "green") + 
+                     theme_bw() +
+                     theme(strip.text = element_text(size = 12)) +
+                     xlab("Year") +
+                     ylab("ASR per 100,000") +
+                     theme(strip.background =element_rect(fill="white")), height = 800, width=800))
+
+names(plots) = names_plot_list
+        
+```
+
+##### C15 Malignant neoplasm of oesophagus
+```{r, echo = FALSE}
+plots[[16]]
+```
+
+##### C16 Malignant neoplasm of stomach
+```{r, echo = FALSE}
+plots[[17]]
+```
+
+##### C18 Malignant neoplasm of colon
+```{r, echo = FALSE}
+plots[[19]]
+```
+
+##### C19 Malignant neoplasm of rectosigmoid junction
+```{r, echo = FALSE}
+plots[[21]]
+```
+
+##### C20  Malignant neoplasm of rectum
+```{r, echo = FALSE}
+plots[[22]]
+```
+
+##### C22 Malignant neoplasm of Malignant neoplasm of liver and intrahepatic bile ducts
+```{r, echo = FALSE}
+plots[[24]]
+```
+
+##### C23 Malignant neoplasm of gallbladder
+```{r, echo = FALSE}
+plots[[25]]
+```
+
+##### C25 Malignant neoplasm of pancreas
+```{r, echo = FALSE}
+plots[[27]]
+```
+
+##### C33-C34 Malignant neoplasm of trachea, bronchus and lung
+```{r, echo = FALSE}
+plots[[33]]
+```
+
+##### C43 Malignant melanoma of skin
+```{r, echo = FALSE}
+plots[[40]]
+```
+
+##### C44 Other malignant neoplasms of skin
+```{r, echo = FALSE}
+plots[[41]]
+```
+
+##### C50 Malignant neoplasm of breast
+```{r, echo = FALSE}
+plots[[47]]
+```
+
+##### C54-C55 Malignant neoplasm of corpus uteri and uterus, part unspecified"
+```{r, echo = FALSE}
+plots[[52]]
+```
+
+##### C56-C57 Malignant neoplasm of ovary and other unspecified female genital organs"
+```{r, echo = FALSE}
+plots[[55]]
+```
+
+##### C61 Malignant neoplasm of prostate
+```{r, echo = FALSE}
+plots[[59]]
+```
+
+##### C62 Malignant neoplasm of testis
+```{r, echo = FALSE}
+plots[[60]]
+```
+
+##### C64 Malignant neoplasm of kidney, except renal pelvis
+```{r, echo = FALSE}
+plots[[62]]
+```
+
+##### C67 Malignant neoplasm of bladder
+```{r, echo = FALSE}
+plots[[65]]
+```
+
+##### C71 Malignant neoplasm of brain
+```{r, echo = FALSE}
+plots[[69]]
+```
+
+##### C80 Malignant neoplasm, without specification of site
+```{r, echo = FALSE}
+plots[[78]]
+```
+
+##### C81  Hodgkin lymphoma
+```{r, echo = FALSE}
+plots[[79]]
+```
+
+##### C82-C86 Non-Hodgkin lymphoma
+```{r, echo = FALSE}
+plots[[81]]
+```
+
+##### C90 Multiple myeloma and malignant plasma cell neoplasms
+```{r, echo = FALSE}
+plots[[87]]
+```
+
+##### C91-C95 Leukaemia
+```{r, echo = FALSE}
+plots[[89]]
+```
+
+<br>
+
+#### *Percentage Change in mortality from 2001 to 2020 by select cancer sites*
+```{r}
+
+kable(data_mort_2001to2020_bysite_allandbysex %>% 
+        filter(Type_of_rate == "Age-standardised") %>%
+        filter(Gender == "Persons") %>%
+        select(Year, Gender, Age_at_Diagnosis, ICD10_code, Site_description, Rate) %>%
+        pivot_wider(names_from = Year, values_from = c(Rate)) %>%
+        filter(grepl(c("C"), ICD10_code)) %>% 
+        unite(ICD10_descrip, ICD10_code , Site_description, sep = " ", remove = TRUE) %>%
+        mutate(Percentage_change_2014_to_2019 = round((`2019` - `2014`)/`2014` * 100)) %>%
+        mutate(Percentage_change_2009_to_2019 = round((`2019` - `2009`)/`2009` * 100)) %>%
+        mutate(Percentage_change_2001_to_2019 = round((`2019` - `2001`)/`2001` * 100)) %>%
+        arrange(desc(Percentage_change_2014_to_2019)) %>%
+        filter(`2019` > 1) %>%
+        #filter(!grepl(c("C79|C88|C93|C85|C66|C69|C34|C33|C02|C84|C83|C91|C92|C78"),ICD10_descrip )) %>%
+        select(ICD10_descrip, `2001`,`2009`,`2014`,`2019`, Percentage_change_2001_to_2019, Percentage_change_2009_to_2019, Percentage_change_2014_to_2019) %>%
+        rename( ICD10 = ICD10_descrip, `01-19` = Percentage_change_2001_to_2019, `09-19` = Percentage_change_2009_to_2019 ,
+                `14-19` = Percentage_change_2014_to_2019)) %>%
+       kableExtra:::add_header_above(c(" " = 1, "ASR" = 4, "% change" = 3)) %>%
+       kable_classic("hover", full_width = T) 
+```
+
+<br>
+
+## Survival
+
+Cancerdata.nhs provides long term data on net survival for 13 cancer sites. Unfortunately this does not include cites such as liver, gallbladder, and rectosigmoid junction which had interesting incidence/mortality trends. 
+
+
+Of note, stomach and bladder cancer both showed steeply decreasing incidence and mortality. For stomach cancer, 1- and 5-year net survival increased substantially, especially for females. Whereas for bladder cancer, net survival trended down, likely reflected the well documented global shortage in bacillus Calmette-Guerin (BCG). Net survival for oesophageal cancer improved over the observed period, which is the likely reason for the declining mortality rate given the flat incidence trend. This same incidence/mortality/survival pattern is also apparent for lung cancer. Both 1- and 5-year net survival also improved greatly for myeloma, and this aligns with it's increasing incidence and flat mortality profile. 
+
+#### *Trends in 1-year net survival by sex and by cancer site* 
+
+#### Select Site {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_surv <- data_surv_2001to2019_bysite %>%
+        filter(Length_of_FU == 1)
+        
+names_plot_list <- levels(factor(temp_surv$Cancer_site))
+
+l_temp_surv <- temp_surv %>% group_split(Cancer_site)
+
+plots <- map(l_temp_surv, ~ ggplotly(ggline(.x, y = "value", x = "Diag_years") +
+                     facet_grid(. ~ Sex) +
+                     theme_bw() +
+                     theme(strip.text = element_text(size = 12)) +
+                     xlab("Years of diagnosis") +
+                     scale_y_continuous(limits = c(0, 100)) +
+                     ylab("Survival") +
+                     theme(strip.background =element_rect(fill="white")) +
+                     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)), height = 600, width=800))
+
+names(plots) = names_plot_list
+```
+
+##### Bladder
+```{r, echo = FALSE}
+plots[[1]]
+```
+
+##### Breast
+```{r, echo = FALSE}
+plots[[2]]
+```
+
+##### Cervix
+```{r, echo = FALSE}
+plots[[3]]
+```
+
+##### Colon
+```{r, echo = FALSE}
+plots[[4]]
+```
+
+##### Colorectal
+```{r, echo = FALSE}
+plots[[5]]
+```
+
+##### Lung
+```{r, echo = FALSE}
+plots[[6]]
+```
+
+##### Myeloma
+```{r, echo = FALSE}
+plots[[7]]
+```
+
+##### Non-Hodgkin lymphoma
+```{r, echo = FALSE}
+plots[[8]]
+```
+
+##### Oesophagus
+```{r, echo = FALSE}
+plots[[9]]
+```
+
+##### Prostate
+```{r, echo = FALSE}
+plots[[10]]
+```
+
+##### Rectal
+```{r, echo = FALSE}
+plots[[11]]
+```
+
+##### Stomach
+```{r, echo = FALSE}
+plots[[12]]
+```
+
+##### Uterus
+```{r, echo = FALSE}
+plots[[13]]
+```
+
+#### *Trends in 5-year net survival by sex and by cancer site* 
+
+#### Select Site {.tabset .tabset-dropdown}
+
+```{r}
+
+temp_surv <- data_surv_2001to2019_bysite %>%
+        filter(Length_of_FU == 5)
+        
+names_plot_list <- levels(factor(temp_surv$Cancer_site))
+
+l_temp_surv <- temp_surv %>% group_split(Cancer_site)
+
+plots <- map(l_temp_surv, ~ ggplotly(ggline(.x, y = "value", x = "Diag_years") +
+                     facet_grid(. ~ Sex) +
+                     theme_bw() +
+                     theme(strip.text = element_text(size = 12)) +
+                     xlab("Years of diagnosis") +
+                     scale_y_continuous(limits = c(0, 100)) +
+                     ylab("Survival") +
+                     theme(strip.background =element_rect(fill="white")) +
+                     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)), height = 600, width=800))
+
+names(plots) = names_plot_list
+```
+
+##### Bladder
+```{r, echo = FALSE}
+plots[[1]]
+```
+
+##### Breast
+```{r, echo = FALSE}
+plots[[2]]
+```
+
+##### Cervix
+```{r, echo = FALSE}
+plots[[3]]
+```
+
+##### Colon
+```{r, echo = FALSE}
+plots[[4]]
+```
+
+##### Colorectal
+```{r, echo = FALSE}
+plots[[5]]
+```
+
+##### Lung
+```{r, echo = FALSE}
+plots[[6]]
+```
+
+##### Myeloma
+```{r, echo = FALSE}
+plots[[7]]
+```
+
+##### Non-Hodgkin lymphoma
+```{r, echo = FALSE}
+plots[[8]]
+```
+
+##### Oesophagus
+```{r, echo = FALSE}
+plots[[9]]
+```
+
+##### Prostate
+```{r, echo = FALSE}
+plots[[10]]
+```
+
+##### Rectal
+```{r, echo = FALSE}
+plots[[11]]
+```
+
+##### Stomach
+```{r, echo = FALSE}
+plots[[12]]
+```
+
+##### Uterus
+```{r, echo = FALSE}
+plots[[13]]
+```
+
+#### *Percentage Change in 1- and 5-year survival* 
+```{r}
+
+kable(data_surv_2001to2019_bysite %>% 
+        filter(Sex != "Persons") %>%
+        select(Cancer_site, Sex, Length_of_FU, Diag_years, value) %>%
+        pivot_wider(names_from = Diag_years, values_from = c(value)) %>%
+        mutate(Pct_chnge_0610_to1519 = round((`2015 to 2019` - `2006 to 2010`)/`2006 to 2010` * 100)) %>%
+        arrange(Length_of_FU, desc(Pct_chnge_0610_to1519), Cancer_site) %>%
+        rename(Cancer = Cancer_site, `1- or 5-year survival`= Length_of_FU, `% change 0610 to 1519` = Pct_chnge_0610_to1519)) %>%
+        kableExtra:::add_header_above(c(" " = 3, "Survival in years of diagnosis" = 10, " " = 1)) %>%
+        kable_classic("hover", full_width = T)
+```
+
+
+
+
+
+#### The following note is attached to the data from CancerData
+
+*An incident case of cancer is a new case of cancer, counted once when the cancer is diagnosed.*
+
+*Incident cases of cancer are counted for each separate primary tumour. One person may be diagnosed with more than one tumour, and would then appear twice in the incidence statistics. Recurrences of a previous cancer are not counted as new incident cases.*
+
+*Cancer mortality estimates show the numbers of people who died as a result of cancer. It does not include people who were diagnosed with cancer but died from an unrelated cause of death.*
+
+*Standardised rates for England are standardised according to 2013 European Standard Population (ESP). Standardised rates for sub-Integrated Care Board locations (sub-ICBLs) are standardised according to an approximate 2013 European Standard Population. This approximation is created by grouping the five year age bands in the ESP into the 5 age bands published on this tool.*
+
+*Data presented are taken from the National Cancer Registration Service Cancer Analysis System, snapshot CAS2210.*
+
+
+
+
+
+
